@@ -296,6 +296,9 @@
       this.vy += 900 * dt;
       this.y += this.vy * dt;
       this.x += this.vx * dt;
+      // Prevent moving above the visible screen
+      const topLimit = this.radius + 8;
+      if (this.y < topLimit) { this.y = topLimit; if (this.vy < 0) this.vy = 0; }
       this.rotation = clamp(lerp(this.rotation, Math.atan2(this.vy, 240), dt * 8), -1.0, 1.0);
 
       this.trailAcc += dt;
