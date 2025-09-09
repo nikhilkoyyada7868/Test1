@@ -570,6 +570,8 @@
       this.particles = new ParticleSystem();
       this.shake = new Shake();
       this.lastTime = 0;
+      this.accumulator = 0;
+      this.fixedDt = 1 / 60; // 60 FPS physics
       this.running = false;
       this.paused = false;
       this.gravityScale = 1;
@@ -732,9 +734,16 @@
     }
     loop = (ms) => {
       if (!this.lastTime) this.lastTime = ms;
-      const dt = clamp((ms - this.lastTime) / 1000, 0, 0.033);
+      let frameDelta = (ms - this.lastTime) / 1000;
       this.lastTime = ms;
-      this.update(dt);
+      // Avoid spiral of death on tab-switch or stalls
+      if (frameDelta > 0.1) frameDelta = 0.1;
+      this.accumulator += frameDelta;
+
+      while (this.accumulator >= this.fixedDt) {
+        this.update(this.fixedDt);
+        this.accumulator -= this.fixedDt;
+      }
       this.draw();
       requestAnimationFrame(this.loop);
     }
