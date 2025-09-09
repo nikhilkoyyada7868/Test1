@@ -14,6 +14,7 @@
   const btnPause = document.getElementById('btn-pause');
   const btnResume = document.getElementById('btn-resume');
   const btnRestart = document.getElementById('btn-restart');
+  const colorSwatches = () => Array.from(document.querySelectorAll('.swatch'));
 
   const DPR = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
   let viewportWidth = 0;
@@ -268,7 +269,7 @@
   }
 
   class Bird {
-    constructor(x, y) {
+    constructor(x, y, theme) {
       this.x = x;
       this.y = y;
       this.vx = 0;
@@ -282,6 +283,7 @@
       // wing animation
       this.wingFlapTime = 0; // seconds remaining of strong flap
       this.wingIdlePhase = 0;
+      this.theme = theme || 'red';
     }
     flap(particles) {
       if (!this.alive) return;
@@ -324,17 +326,18 @@
       ctx.save();
       ctx.translate(this.x, this.y);
       ctx.rotate(this.rotation);
+      const colors = themeColors[this.theme];
       const bodyGrad = ctx.createLinearGradient(-26, -26, 30, 30);
-      bodyGrad.addColorStop(0, '#ffd86a');
-      bodyGrad.addColorStop(1, '#ffb64b');
+      bodyGrad.addColorStop(0, colors.bodyStart);
+      bodyGrad.addColorStop(1, colors.bodyEnd);
       ctx.fillStyle = bodyGrad;
       roundedRect(ctx, -26, -20, 52, 40, 20);
       ctx.fill();
 
       // wings (two small wings that flap on tap)
       const wingGrad = ctx.createLinearGradient(-12, -10, 12, 10);
-      wingGrad.addColorStop(0, '#ffe7a6');
-      wingGrad.addColorStop(1, '#ffc66a');
+      wingGrad.addColorStop(0, colors.wingStart);
+      wingGrad.addColorStop(1, colors.wingEnd);
       ctx.fillStyle = wingGrad;
       const flapAmp = this.wingFlapTime > 0 ? 0.9 : 0.25;
       const flapSpeed = this.wingFlapTime > 0 ? 26 : 8;
@@ -365,11 +368,11 @@
       ctx.fill();
 
       // eye
-      ctx.fillStyle = '#fff';
+      ctx.fillStyle = colors.eyeWhite;
       ctx.beginPath();
       ctx.arc(8, -8, 7, 0, TAU);
       ctx.fill();
-      ctx.fillStyle = '#111';
+      ctx.fillStyle = colors.pupil;
       ctx.beginPath();
       ctx.arc(10, -8, 3.2, 0, TAU);
       ctx.fill();
@@ -379,6 +382,24 @@
       return { x: this.x, y: this.y, r: this.radius };
     }
   }
+
+  const themeColors = {
+    red: {
+      bodyStart: '#ffb07a', bodyEnd: '#ff6a42', wingStart: '#ffd1b0', wingEnd: '#ff9a6b', eyeWhite: '#ffffff', pupil: '#111111'
+    },
+    white: {
+      bodyStart: '#ffffff', bodyEnd: '#e9eef5', wingStart: '#ffffff', wingEnd: '#dfe6f0', eyeWhite: '#ffffff', pupil: '#111111'
+    },
+    black: {
+      bodyStart: '#3b3b3b', bodyEnd: '#0f0f0f', wingStart: '#4a4a4a', wingEnd: '#1a1a1a', eyeWhite: '#e9eef5', pupil: '#000000'
+    },
+    purple: {
+      bodyStart: '#c1a2ff', bodyEnd: '#7a50ff', wingStart: '#e0d4ff', wingEnd: '#a385ff', eyeWhite: '#ffffff', pupil: '#111111'
+    },
+    pink: {
+      bodyStart: '#ffb1df', bodyEnd: '#ff5bb5', wingStart: '#ffd1ec', wingEnd: '#ff93cd', eyeWhite: '#ffffff', pupil: '#111111'
+    }
+  };
 
   function roundedRect(ctx, x, y, w, h, r) {
     ctx.beginPath();
@@ -539,7 +560,8 @@
   class Game {
     constructor() {
       this.bg = new Background();
-      this.bird = new Bird(viewportWidth * 0.3, viewportHeight * 0.45);
+      this.selectedColor = localStorage.getItem('luxe_bird_color') || 'red';
+      this.bird = new Bird(viewportWidth * 0.3, viewportHeight * 0.45, this.selectedColor);
       this.pipes = new PipeManager();
       this.ui = new UI();
       this.particles = new ParticleSystem();
@@ -555,6 +577,7 @@
       this.invinciblePipesRemaining = 0;
       this.nextFruitScore = 5; // initial threshold
       this.initInput();
+      this.initColorPicker();
     }
     initInput() {
       const flap = () => {
@@ -564,7 +587,12 @@
         this.bird.flap(this.particles);
         this.shake.trigger(0.1);
       };
-      window.addEventListener('pointerdown', flap);
+      window.addEventListener('pointerdown', (e) => {
+        // Ignore clicks on UI overlay/panel (e.g., color swatches, buttons)
+        if (!overlay.classList.contains('hidden')) return;
+        if (e.target && typeof e.target.closest === 'function' && e.target.closest('.panel')) return;
+        flap();
+      });
       window.addEventListener('keydown', (e) => {
         if (e.code === 'Space' || e.code === 'ArrowUp') { e.preventDefault(); flap(); }
         if (e.code === 'KeyP') { e.preventDefault(); this.togglePause(); }
@@ -577,7 +605,7 @@
     }
     start() {
       this.ui.resetScore();
-      this.bird = new Bird(viewportWidth * 0.3, viewportHeight * 0.45);
+      this.bird = new Bird(viewportWidth * 0.3, viewportHeight * 0.45, this.selectedColor);
       this.pipes.reset();
       this.running = true;
       this.paused = false;
@@ -587,6 +615,20 @@
       this.invincible = false;
       this.invinciblePipesRemaining = 0;
       this.nextFruitScore = 5;
+    }
+    initColorPicker() {
+      const current = this.selectedColor;
+      colorSwatches().forEach(btn => {
+        if (btn.dataset.color === current) btn.classList.add('active');
+        btn.addEventListener('click', () => {
+          colorSwatches().forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          this.selectedColor = btn.dataset.color;
+          localStorage.setItem('luxe_bird_color', this.selectedColor);
+          // update live bird if in menu or paused; on running, update immediately too
+          this.bird.theme = this.selectedColor;
+        });
+      });
     }
     togglePause() {
       if (!this.running) return;

@@ -14,11 +14,21 @@
         <canvas id="game"></canvas>
         <div id="overlay" class="hidden">
             <div class="panel">
-                <h1>Flappy Bird — Luxe</h1>
+                <h1>Flappy Bird — Luxe Edition</h1>
                 <p id="subtitle">Tap or press Space to flap</p>
                 <div class="stats">
                     <div><span class="label">Score</span><span id="score">0</span></div>
                     <div><span class="label">Best</span><span id="best">0</span></div>
+                </div>
+                <div class="color-picker">
+                    <span class="label">Bird Color</span>
+                    <div class="swatches">
+                        <button class="swatch" data-color="red" aria-label="Red"></button>
+                        <button class="swatch" data-color="white" aria-label="White"></button>
+                        <button class="swatch" data-color="black" aria-label="Black"></button>
+                        <button class="swatch" data-color="purple" aria-label="Purple"></button>
+                        <button class="swatch" data-color="pink" aria-label="Pink"></button>
+                    </div>
                 </div>
                 <div class="buttons">
                     <button id="btn-start">Start</button>
